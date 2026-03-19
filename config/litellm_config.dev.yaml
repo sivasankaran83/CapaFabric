@@ -1,0 +1,25 @@
+# Option A: OpenRouter (recommended for 16GB machines — no local model needed)
+model_list:
+  - model_name: "reasoning-heavy"
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: "fast-classification"
+    litellm_params:
+      model: openrouter/anthropic/claude-haiku-4
+      api_key: os.environ/OPENROUTER_API_KEY
+
+# Option B: Local Ollama (if you have RAM to spare)
+#  - model_name: "reasoning-heavy"
+#    litellm_params:
+#      model: ollama/llama3.2
+#      api_base: http://localhost:11434
+#
+#  - model_name: "fast-classification"
+#    litellm_params:
+#      model: ollama/llama3.2
+#      api_base: http://localhost:11434
+
+general_settings:
+  master_key: sk-dev-key

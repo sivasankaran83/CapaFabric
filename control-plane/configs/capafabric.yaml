@@ -1,0 +1,57 @@
+server:
+  port: 8080
+  admin_ui: true
+
+registry:
+  type: redis
+  url: redis://redis:6379
+
+state:
+  type: redis
+  url: redis://state:6379
+
+auth:
+  provider: jwt
+  jwks_url: https://login.microsoftonline.com/${TENANT_ID}/discovery/v2.0/keys
+  audience: api://capafabric
+
+policy:
+  enforcer: rbac
+
+guardrails:
+  enabled: true
+  fail_mode: block
+  inbound:
+    - type: prompt_injection
+      provider: local
+      action: block
+    - type: pii_redaction
+      provider: presidio
+      action: redact
+      phi_mode: true
+  outbound:
+    - type: output_safety
+      provider: azure_content_safety
+      action: block
+    - type: schema_compliance
+      action: block
+
+context_management:
+  enabled: true
+  strategy: adaptive
+
+observability:
+  tracer: otel
+  otel_endpoint: http://otel-collector:4317
+  service_name: capafabric-control-plane
+  audit:
+    enabled: true
+    writer: cosmos
+
+load_balancing:
+  strategy: round_robin
+  health_check_interval_ms: 10000
+
+health:
+  heartbeat_ttl_seconds: 60
+  check_interval_ms: 30000

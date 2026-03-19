@@ -1,0 +1,13 @@
+mode: capability
+port: 3501
+
+control_plane:
+  url: http://localhost:8080
+
+app:
+  port: 8081
+  health_check_interval_ms: 10000
+
+observability:
+  tracer: log
+  service_name: cfproxy-capability

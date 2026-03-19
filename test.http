@@ -1,0 +1,103 @@
+### ===== Control Plane API =====
+
+### Health check
+GET http://localhost:8080/api/v1/health
+
+### List all registered capabilities
+GET http://localhost:8080/api/v1/capabilities
+
+### Register a capability
+POST http://localhost:8080/api/v1/capabilities/register
+Content-Type: application/json
+
+{
+  "capability_id": "stallion.retrieve_invoice_details",
+  "name": "retrieve_invoice_details",
+  "description": "Retrieves invoice details from Oracle Accounts Receivable",
+  "tags": ["oracle", "invoice", "finance"],
+  "agent_id": "stallion-cash-matching",
+  "idempotent": true,
+  "side_effects": false,
+  "endpoint": {
+    "method": "GET",
+    "path": "/invoices/{invoice_id}",
+    "arguments": {
+      "invoice_id": { "in": "path" }
+    },
+    "response": { "from": "body" }
+  },
+  "proxy_url": "http://localhost:3501"
+}
+
+### Discover capabilities
+POST http://localhost:8080/api/v1/discover
+Content-Type: application/json
+
+{
+  "goal": "Match invoice INV-4821 to cash receipt for customer CUST-4821",
+  "max_tools": 20
+}
+
+### Discover by tag
+POST http://localhost:8080/api/v1/discover
+Content-Type: application/json
+
+{
+  "tags": ["finance"],
+  "max_tools": 10
+}
+
+### Invoke a capability (CP returns proxy route info)
+POST http://localhost:8080/api/v1/invoke/stallion.retrieve_invoice_details
+Content-Type: application/json
+
+{
+  "arguments": {
+    "invoice_id": "INV-4821"
+  },
+  "caller_id": "stallion-agent",
+  "goal_id": "GOAL-001"
+}
+
+### Send heartbeat
+POST http://localhost:8080/api/v1/heartbeat
+Content-Type: application/json
+
+{
+  "agent_id": "stallion-cash-matching",
+  "capability_ids": ["stallion.retrieve_invoice_details"]
+}
+
+### Health - capabilities breakdown
+GET http://localhost:8080/api/v1/health/capabilities
+
+### Unregister a capability
+DELETE http://localhost:8080/api/v1/capabilities/stallion.retrieve_invoice_details
+
+
+### ===== Proxy API (Agent Mode) =====
+
+### Discover via proxy
+POST http://localhost:3500/api/v1/discover
+Content-Type: application/json
+
+{
+  "goal": "Match invoice INV-4821 to cash receipt",
+  "max_tools": 20
+}
+
+### Invoke via proxy
+POST http://localhost:3500/api/v1/invoke/stallion.retrieve_invoice_details
+Content-Type: application/json
+
+{
+  "arguments": {
+    "invoice_id": "INV-4821"
+  },
+  "caller_id": "stallion-agent",
+  "goal_id": "GOAL-001",
+  "tenant_id": "stallion"
+}
+
+### Proxy health
+GET http://localhost:3500/api/v1/health

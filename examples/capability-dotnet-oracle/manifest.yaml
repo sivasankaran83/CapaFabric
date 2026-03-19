@@ -1,0 +1,127 @@
+apiVersion: capafabric/v1
+kind: CapabilityManifest
+
+metadata:
+  agent_id: stallion-cash-matching
+  language: dotnet
+  version: "1.0.0"
+
+app:
+  port: 8081
+  protocol: http
+  health_path: /health
+  base_path: /api
+
+capabilities:
+  - capability_id: stallion.retrieve_invoice_details
+    name: retrieve_invoice_details
+    description: >
+      Retrieves invoice details from Oracle Accounts Receivable including
+      line items, customer info, amount, due date, and payment status.
+    tags: [oracle, erp, invoice, read, finance]
+    idempotent: true
+    side_effects: false
+    endpoint:
+      method: GET
+      path: /invoices/{invoice_id}
+      arguments:
+        invoice_id: { in: path }
+      response:
+        from: body
+    security:
+      required_roles: [finance_analyst, ar_clerk]
+      classification: confidential
+
+  - capability_id: stallion.locate_matching_receipts
+    name: locate_matching_receipts
+    description: >
+      Searches bank lockbox cash receipts by customer ID and date range.
+      Returns matching receipts with amounts and remittance info.
+    tags: [bank, receipt, cash, read, finance]
+    idempotent: true
+    side_effects: false
+    endpoint:
+      method: POST
+      path: /receipts/search
+      arguments:
+        customer_id: { in: body }
+        date_range_start: { in: body }
+        date_range_end: { in: body }
+      response:
+        from: body.receipts
+
+  - capability_id: stallion.verify_three_way_match
+    name: verify_three_way_match
+    description: >
+      Performs deterministic 3-way match between invoice amount, bank receipt
+      amount, and purchase order amount. Returns match status and variance.
+    tags: [matching, reconciliation, finance]
+    idempotent: true
+    side_effects: false
+    endpoint:
+      method: POST
+      path: /matching/three-way
+      arguments:
+        invoice_amount: { in: body }
+        receipt_amount: { in: body }
+        po_amount: { in: body }
+        tolerance: { in: body, default: 15.0 }
+      response:
+        from: body
+
+  - capability_id: stallion.commit_financial_posting
+    name: commit_financial_posting
+    description: >
+      Posts a matched receipt against an invoice in Oracle AR. Irreversible.
+    tags: [oracle, erp, posting, write, finance, critical]
+    idempotent: false
+    side_effects: true
+    requires_approval: true
+    endpoint:
+      method: POST
+      path: /oracle/post-match
+      arguments:
+        invoice_id: { in: body }
+        receipt_id: { in: body }
+        match_status: { in: body }
+      response:
+        from: body
+    security:
+      required_roles: [ar_manager, finance_admin]
+      classification: restricted
+      audit_level: forensic
+      max_calls_per_minute: 10
+
+  - capability_id: stallion.escalate_variance_to_reviewer
+    name: escalate_variance_to_reviewer
+    description: >
+      Sends a variance notification to the AR clerk for manual review.
+    tags: [notification, alert, finance]
+    idempotent: true
+    side_effects: true
+    endpoint:
+      method: POST
+      path: /notifications/variance-alert
+      arguments:
+        invoice_id: { in: body }
+        customer_name: { in: body }
+        variance_amount: { in: body }
+        assigned_to: { in: body, default: "ar_clerk" }
+      response:
+        from: body
+
+  - capability_id: stallion.produce_compliance_audit
+    name: produce_compliance_audit
+    description: >
+      Generates a PDF audit document recording the complete matching journey.
+    tags: [audit, pdf, compliance, finance]
+    idempotent: true
+    side_effects: true
+    endpoint:
+      method: POST
+      path: /audit/generate-trail
+      arguments:
+        invoice_id: { in: body }
+        decision_count: { in: body }
+      response:
+        from: body
